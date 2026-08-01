@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Idea Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --paper:#f2ede1;
+    --paper-dark:#e8e0cd;
+    --ink:#2b2620;
+    --ink-soft:#6b6355;
+    --rule:#c9bfa5;
+    --marker:#c1481d;
+    --marker-soft:#e8a98a;
+    --lab:#3a6b5c;
+    --lab-soft:#bcd6cb;
+    --overdue:#a3272e;
+    --card-shadow: 0 1px 0 rgba(43,38,32,0.06), 0 6px 14px -8px rgba(43,38,32,0.25);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(180deg, transparent, transparent 27px, var(--rule) 28px),
+      var(--paper);
+    color:var(--ink);
+    font-family: 'Courier New', ui-monospace, monospace;
+    min-height:100vh;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:36px 24px 80px;}
+
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:3px solid var(--ink);padding-bottom:14px;margin-bottom:20px;
+  }
+  h1{
+    font-family: Georgia, 'Times New Roman', serif;font-weight:700;font-style:italic;
+    font-size:34px;margin:0;letter-spacing:0.3px;
+  }
+  .subtitle{font-size:12px;color:var(--ink-soft);margin-top:4px;text-transform:uppercase;letter-spacing:1.5px;}
+  .datebox{font-size:12px;color:var(--ink-soft);text-align:right;line-height:1.6;}
+
+  .banner{
+    background:var(--lab-soft);border:1px solid var(--lab);border-radius:2px;padding:10px 14px;
+    font-size:12px;color:#204236;margin-bottom:24px;display:flex;justify-content:space-between;
+    align-items:center;gap:10px;
+  }
+  .banner button{background:none;border:1px solid var(--lab);color:#204236;font-family:inherit;
+    font-size:11px;padding:3px 8px;border-radius:2px;cursor:pointer;white-space:nowrap;}
+
+  .err-box{
+    display:none;color:#fff;background:var(--overdue);padding:8px 14px;font-size:12px;
+    border-radius:2px;margin-bottom:16px;
+  }
+
+  .folderbar{
+    display:flex;align-items:center;gap:10px;margin-bottom:20px;
+    font-size:12px;color:var(--ink-soft);
+  }
+  .folderbar button{
+    border:1px solid var(--rule);background:var(--paper-dark);padding:6px 12px;font-size:11px;
+    text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;border-radius:2px;color:var(--ink);
+    font-family:inherit;
+  }
+  .folderbar button:hover{border-color:var(--marker);}
+  .folder-name{color:var(--lab);font-weight:bold;}
+
+  .capture{
+    background:var(--paper-dark);border:1px solid var(--rule);border-radius:2px;padding:18px 20px;
+    margin-bottom:32px;box-shadow:var(--card-shadow);position:relative;
+  }
+  .capture::before{
+    content:"NEW ENTRY";position:absolute;top:-10px;left:16px;background:var(--marker);color:#fff;
+    font-size:10px;letter-spacing:2px;padding:3px 8px;font-weight:bold;
+  }
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--ink-soft);margin:12px 0 4px;}
+  label:first-of-type{margin-top:6px;}
+  textarea, input[type=text], input[type=date], select{
+    width:100%;font-family:inherit;font-size:14px;background:var(--paper);border:1px solid var(--rule);
+    border-radius:2px;padding:9px 10px;color:var(--ink);
+  }
+  textarea{resize:vertical;min-height:56px;}
+  .row{display:flex;gap:16px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:170px;}
+  .file-row{display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap;}
+  .file-btn{
+    border:1px dashed var(--rule);background:var(--paper);padding:8px 12px;font-size:12px;
+    cursor:pointer;color:var(--ink-soft);border-radius:2px;
+  }
+  .file-btn:hover{border-color:var(--marker);color:var(--marker);}
+
+  .voice-btn{
+    margin-top:6px;font-size:12px;color:var(--marker);font-weight:bold;cursor:pointer;
+    display:inline-flex;align-items:center;gap:5px;user-select:none;
+  }
+  .voice-btn:hover{text-decoration:underline;}
+  .voice-btn[hidden]{display:none;}
+  .voice-btn.listening{color:var(--lab);}
+
+  .date-chips{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+  .date-chip{
+    border:1px solid var(--rule);background:var(--paper);padding:3px 9px;font-size:10px;
+    text-transform:uppercase;letter-spacing:0.3px;cursor:pointer;border-radius:12px;color:var(--ink-soft);
+    font-family:inherit;transition:background 120ms, color 120ms;
+  }
+  .date-chip:hover, .date-chip.active{background:var(--lab);border-color:var(--lab);color:#fff;}
+
+  .dropzone{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;
+    border:1px dashed var(--rule);border-radius:2px;padding:8px 10px;transition:border-color 120ms, background 120ms;
+  }
+  .dropzone.dragover{border-color:var(--marker);background:#fff6ee;}
+  .dropzone-hint{font-size:11px;color:var(--ink-soft);}
+
+  .cal-btn{
+    background:none;border:1px solid var(--rule);border-radius:2px;padding:3px 8px;font-size:10px;
+    cursor:pointer;color:var(--ink-soft);font-family:inherit;text-decoration:none;display:inline-block;
+  }
+  .cal-btn:hover{border-color:var(--lab);color:var(--lab);}
+  .actions{display:flex;justify-content:space-between;align-items:center;margin-top:16px;}
+  .hint{font-size:11px;color:var(--ink-soft);}
+  button.primary{
+    background:var(--marker);color:#fff;border:none;padding:10px 22px;font-family:inherit;
+    font-size:13px;letter-spacing:0.5px;text-transform:uppercase;cursor:pointer;border-radius:2px;
+  }
+  button.primary:hover{background:#a53c17;}
+  button.primary:disabled{background:var(--rule);cursor:not-allowed;}
+
+  /* extracted pdf table inside capture form */
+  .pdf-table-wrap{margin-top:10px;}
+  table.pdf-meta{width:100%;border-collapse:collapse;font-size:12px;background:var(--paper);}
+  table.pdf-meta th{
+    text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-soft);
+    border-bottom:1px solid var(--rule);padding:6px 6px;
+  }
+  table.pdf-meta td{border-bottom:1px solid var(--rule);padding:5px 6px;vertical-align:top;}
+  table.pdf-meta input{
+    width:100%;border:1px solid transparent;background:transparent;font-family:inherit;font-size:12px;
+    padding:3px 4px;color:var(--ink);
+  }
+  table.pdf-meta input:focus{border-color:var(--rule);background:#fff;}
+  .rm-row{
+    background:none;border:1px solid var(--rule);border-radius:2px;font-size:10px;padding:2px 6px;
+    cursor:pointer;color:var(--ink-soft);font-family:inherit;
+  }
+  .rm-row:hover{border-color:var(--overdue);color:var(--overdue);}
+  .extracting{font-size:11px;color:var(--lab);font-style:italic;}
+
+  .filterbar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
+  .chip{
+    border:1px solid var(--rule);background:transparent;padding:6px 12px;font-size:11px;
+    text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-radius:14px;color:var(--ink-soft);
+    font-family:inherit;
+  }
+  .chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .search{margin-left:auto;max-width:220px;}
+  .export-all-btn{
+    border:1px solid var(--rule);background:var(--paper-dark);padding:6px 12px;font-size:11px;
+    text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;border-radius:2px;color:var(--ink);
+    font-family:inherit;
+  }
+  .export-all-btn:hover{border-color:var(--marker);color:var(--marker);}
+
+  /* analytics panel */
+  .analytics{
+    display:flex;flex-wrap:wrap;gap:0;
+    background:var(--paper-dark);border:1px solid var(--rule);border-radius:2px;
+    margin-bottom:20px;font-size:11px;color:var(--ink-soft);
+  }
+  .analytics .stat{
+    flex:1;min-width:120px;padding:10px 14px;border-right:1px solid var(--rule);
+  }
+  .analytics .stat:last-child{border-right:none;}
+  .analytics .stat .num{
+    font-family:Georgia,serif;font-size:20px;color:var(--ink);display:block;line-height:1.2;
+  }
+  .analytics .stat .lbl{text-transform:uppercase;letter-spacing:0.5px;font-size:10px;}
+  .analytics .stat .num.warn{color:var(--overdue);}
+
+  /* duplicate detection */
+  .dupe-note{
+    background:#fff6e6;border:1px solid #d9a441;border-radius:2px;padding:10px 12px;
+    margin-top:10px;font-size:12px;color:#5c4110;display:none;
+  }
+  .dupe-note.show{display:block;}
+  .dupe-note .dupe-item{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:6px 0;border-top:1px dashed #d9a441;
+  }
+  .dupe-note .dupe-item:first-of-type{border-top:none;}
+  .dupe-note .dupe-text{flex:1;font-family:Georgia,serif;font-style:italic;}
+  .dupe-note .dupe-actions{display:flex;gap:6px;flex-shrink:0;}
+  .dupe-note button{
+    font-family:inherit;font-size:10px;border:1px solid #d9a441;background:#fff;color:#5c4110;
+    padding:3px 8px;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:0.3px;
+  }
+  .dupe-note button:hover{background:#d9a441;color:#fff;}
+  .dupe-note .dupe-head{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .tag.linked{border-color:#d9a441;color:#8a6212;}
+
+  .card{
+    background:#fffdf7;border:1px solid var(--rule);border-left:4px solid var(--lab);border-radius:2px;
+    padding:14px 16px;margin-bottom:12px;box-shadow:var(--card-shadow);position:relative;
+  }
+  .card.overdue{border-left-color:var(--overdue);}
+  .card.tested{opacity:0.6;}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .idea-text{font-family:Georgia,serif;font-size:15.5px;line-height:1.5;color:var(--ink);flex:1;}
+  .idea-text.done{text-decoration:line-through;color:var(--ink-soft);}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:11px;color:var(--ink-soft);align-items:center;}
+  .tag{border:1px solid var(--rule);padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.5px;}
+  .tag.action{background:var(--lab-soft);border-color:var(--lab);color:#204236;}
+  .tag.due{border-color:var(--marker-soft);}
+  .tag.due.overdue{background:var(--overdue);color:#fff;border-color:var(--overdue);}
+  .tag.folder{border-color:var(--lab);color:var(--lab);}
+  .row-btns{display:flex;gap:6px;margin-left:auto;align-items:center;}
+  .icon-btn{
+    background:none;border:1px solid var(--rule);border-radius:2px;padding:4px 8px;font-size:11px;
+    cursor:pointer;color:var(--ink-soft);font-family:inherit;
+  }
+  .icon-btn:hover{border-color:var(--ink);color:var(--ink);}
+  select.status-select{font-size:11px;padding:3px 6px;width:auto;}
+  .sources-list{margin-top:8px;font-size:11px;border-top:1px dashed var(--rule);padding-top:8px;}
+  .sources-list div{padding:2px 0;color:var(--ink-soft);}
+  .sources-list b{color:var(--ink);}
+
+  .empty{text-align:center;color:var(--ink-soft);font-size:13px;padding:30px 0;font-style:italic;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Idea Tracker</h1>
+      <div class="subtitle">Capture now. Test later. Don't forget.</div>
+    </div>
+    <div class="datebox" id="todayBox"></div>
+  </header>
+
+  <div class="err-box" id="errBox"></div>
+
+  <div class="banner" id="banner">
+    <span>💡 Tip: pin this tab next to your PDF reader while you read papers — capture takes 10 seconds, then get back to it.</span>
+    <button id="dismissBanner">dismiss</button>
+  </div>
+
+  <div class="folderbar" id="folderBar"></div>
+
+  <div class="capture">
+    <label for="ideaText">The idea</label>
+    <textarea id="ideaText" placeholder="e.g. Could apply their attention-pruning method to our time-series model..."></textarea>
+    <div class="voice-btn" id="voiceBtn" hidden>🎤 <span id="voiceLabel">Speak your idea</span></div>
+    <div class="dupe-note" id="dupeNote"></div>
+
+    <div class="row">
+      <div>
+        <label for="actionType">Next action</label>
+        <select id="actionType">
+          <option>Test in code</option>
+          <option>Test in lab</option>
+          <option>Read more</option>
+          <option>Discuss</option>
+          <option>Cite in related work</option>
+          <option>Add to lit review</option>
+          <option>Ask advisor</option>
+          <option>Include in grant/proposal</option>
+          <option>Replicate</option>
+          <option>Write up as note</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label for="dueDate">Remind me on</label>
+        <input type="date" id="dueDate">
+        <div class="date-chips" id="dateChips">
+          <button type="button" class="date-chip" data-offset="3d">+3d</button>
+          <button type="button" class="date-chip" data-offset="1w">+1w</button>
+          <button type="button" class="date-chip" data-offset="2w">+2w</button>
+          <button type="button" class="date-chip" data-offset="mon">next Mon</button>
+        </div>
+      </div>
+    </div>
+
+    <label>Attach source PDF(s) — title, authors and DOI are pulled automatically</label>
+    <div class="file-row">
+      <div class="dropzone" id="dropzone">
+        <button class="file-btn" id="pickPdfBtn" type="button">Choose PDF(s)</button>
+        <span class="dropzone-hint">or drag &amp; drop PDF files here</span>
+      </div>
+      <input type="file" id="pdfInput" accept="application/pdf" multiple style="display:none;">
+      <span class="extracting" id="extractingMsg"></span>
+    </div>
+
+    <div class="pdf-table-wrap" id="pdfTableWrap" style="display:none;">
+      <table class="pdf-meta">
+        <thead>
+          <tr><th style="width:26%">Title</th><th style="width:22%">Authors</th><th style="width:18%">DOI</th><th style="width:20%">File</th><th></th></tr>
+        </thead>
+        <tbody id="pdfTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <span class="hint" id="storageHint"></span>
+      <button class="primary" id="addBtn" type="button">Add idea</button>
+    </div>
+  </div>
+
+  <div class="analytics" id="analyticsPanel"></div>
+
+  <div class="filterbar">
+    <button class="chip active" data-filter="all">All</button>
+    <button class="chip" data-filter="overdue">Overdue</button>
+    <button class="chip" data-filter="New">New</button>
+    <button class="chip" data-filter="In Progress">In progress</button>
+    <button class="chip" data-filter="Tested">Tested</button>
+    <button class="export-all-btn" id="exportAllBtn">Export all as CSV</button>
+    <input class="search" type="text" id="searchBox" placeholder="Search ideas, sources, DOI...">
+  </div>
+
+  <div id="listArea"></div>
+
+</div>
+
+<script>
+'use strict';
+
+/* ================= setup ================= */
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const STORAGE_KEY = 'idea_tracker_data_v2';
+const DRAFT_KEY = 'idea_tracker_draft_v1';
+const FS_SUPPORTED = 'showDirectoryPicker' in window;
+const SPEECH_SUPPORTED = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+
+const ideaTextEl = document.getElementById('ideaText');
+const actionTypeEl = document.getElementById('actionType');
+const dueDateEl = document.getElementById('dueDate');
+const pdfInput = document.getElementById('pdfInput');
+const pickPdfBtn = document.getElementById('pickPdfBtn');
+const extractingMsg = document.getElementById('extractingMsg');
+const pdfTableWrap = document.getElementById('pdfTableWrap');
+const pdfTableBody = document.getElementById('pdfTableBody');
+const addBtn = document.getElementById('addBtn');
+const listArea = document.getElementById('listArea');
+const searchBox = document.getElementById('searchBox');
+const todayBox = document.getElementById('todayBox');
+const storageHint = document.getElementById('storageHint');
+const banner = document.getElementById('banner');
+const dismissBanner = document.getElementById('dismissBanner');
+const folderBar = document.getElementById('folderBar');
+const analyticsPanel = document.getElementById('analyticsPanel');
+const exportAllBtn = document.getElementById('exportAllBtn');
+const dupeNote = document.getElementById('dupeNote');
+const dateChips = document.getElementById('dateChips');
+const dropzone = document.getElementById('dropzone');
+const errBox = document.getElementById('errBox');
+const voiceBtn = document.getElementById('voiceBtn');
+const voiceLabel = document.getElementById('voiceLabel');
+
+let dismissedDupeIds = new Set(); // idea ids dismissed as "not a duplicate" for the current draft
+let linkedIdeaId = null;          // idea id the current draft will be linked to, if user chooses "link"
+
+let ideas = [];
+let activeFilter = 'all';
+let pendingFiles = []; // {file, title, authors, doi}
+let rootDirHandle = null; // chosen base folder (File System Access API)
+
+/* ================= error surface ================= */
+function showError(msg){
+  errBox.textContent = msg;
+  errBox.style.display = 'block';
+}
+function clearError(){
+  errBox.style.display = 'none';
+  errBox.textContent = '';
+}
+
+/* ================= date helpers (local time throughout — never toISOString for "today") ================= */
+function todayStr(){ return new Date().toLocaleDateString('en-CA'); } // en-CA => YYYY-MM-DD
+function fmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+}
+function addDaysLocal(dateStr, n){
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toLocaleDateString('en-CA');
+}
+todayBox.innerHTML = `Today<br>${fmtDate(todayStr())}`;
+
+/* ================= relative due-date chips ================= */
+function computeRelativeDate(offset){
+  const d = new Date();
+  if(offset === '3d') d.setDate(d.getDate() + 3);
+  else if(offset === '1w') d.setDate(d.getDate() + 7);
+  else if(offset === '2w') d.setDate(d.getDate() + 14);
+  else if(offset === 'mon'){
+    const day = d.getDay(); // 0=Sun..6=Sat
+    const daysUntilMon = (8 - day) % 7 || 7; // always the *next* Monday, even if today is Monday
+    d.setDate(d.getDate() + daysUntilMon);
+  }
+  return d.toLocaleDateString('en-CA');
+}
+dateChips.querySelectorAll('.date-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    dueDateEl.value = computeRelativeDate(chip.dataset.offset);
+    dateChips.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+dueDateEl.addEventListener('input', () => {
+  dateChips.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
+});
+
+/* ================= draft autosave (writes AND restores) ================= */
+function autoSaveDraft(text){
+  try{
+    if(text && text.trim()){ localStorage.setItem(DRAFT_KEY, text); }
+    else { localStorage.removeItem(DRAFT_KEY); }
+  }catch(e){ /* storage unavailable — draft just won't persist, non-fatal */ }
+}
+function restoreDraft(){
+  try{
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if(saved){ ideaTextEl.value = saved; }
+  }catch(e){ /* ignore */ }
+}
+function clearDraft(){
+  try{ localStorage.removeItem(DRAFT_KEY); }catch(e){ /* ignore */ }
+}
+
+/* ================= banner ================= */
+if(localStorage.getItem('idea_tracker_banner_dismissed') === '1'){ banner.style.display = 'none'; }
+dismissBanner.addEventListener('click', () => {
+  banner.style.display = 'none';
+  localStorage.setItem('idea_tracker_banner_dismissed', '1');
+});
+
+/* ================= voice typing (Web Speech API — note: audio is processed off-device by
+   the browser vendor, e.g. Chrome sends it to Google. This is the one feature in this app
+   that isn't fully local; shown only when the browser supports it, and clearly optional). ================= */
+if(SPEECH_SUPPORTED){
+  voiceBtn.hidden = false;
+  let recognizing = false;
+  let recognizer = null;
+
+  voiceBtn.addEventListener('click', () => {
+    if(recognizing){ recognizer && recognizer.stop(); return; }
+    try{
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognizer = new SR();
+      recognizer.lang = 'en-US';
+      recognizer.interimResults = false;
+      recognizer.maxAlternatives = 1;
+
+      recognizer.onstart = () => {
+        recognizing = true;
+        voiceBtn.classList.add('listening');
+        voiceLabel.textContent = 'Listening… click to stop';
+      };
+      recognizer.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        const sep = ideaTextEl.value.trim() ? ' ' : '';
+        ideaTextEl.value = ideaTextEl.value + sep + transcript;
+        autoSaveDraft(ideaTextEl.value);
+        checkForDuplicates();
+      };
+      recognizer.onerror = (e) => {
+        showError('Voice input error: ' + (e.error || 'unknown'));
+      };
+      recognizer.onend = () => {
+        recognizing = false;
+        voiceBtn.classList.remove('listening');
+        voiceLabel.textContent = 'Speak your idea';
+      };
+      recognizer.start();
+    }catch(e){
+      showError('Voice input is not available: ' + e.message);
+    }
+  });
+}
+
+/* ================= folder bar (File System Access API) ================= */
+const IDB_NAME = 'idea_tracker_db';
+const IDB_STORE = 'handles';
+const IDB_KEY = 'rootDir';
+
+function idbOpen(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSetHandle(handle){
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(handle, IDB_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbGetHandle(){
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function restoreRootFolder(){
+  if(!FS_SUPPORTED) return;
+  try{
+    const handle = await idbGetHandle();
+    if(!handle) return;
+    const perm = await handle.queryPermission({mode:'readwrite'});
+    if(perm === 'granted'){
+      rootDirHandle = handle;
+    } else {
+      // Can't silently re-request without a user gesture; show a "reconnect" prompt instead.
+      rootDirHandle = null;
+      window.__pendingFolderHandle = handle;
+    }
+  }catch(e){ /* handle may be stale/revoked — ignore, user can re-pick */ }
+  renderFolderBar();
+}
+
+async function reconnectRootFolder(){
+  const handle = window.__pendingFolderHandle;
+  if(!handle) return pickRootFolder();
+  try{
+    const perm = await handle.requestPermission({mode:'readwrite'});
+    if(perm === 'granted'){
+      rootDirHandle = handle;
+      window.__pendingFolderHandle = null;
+      renderFolderBar();
+    }
+  }catch(e){ showError('Could not reconnect to the folder: ' + e.message); }
+}
+
+function renderFolderBar(){
+  if(!FS_SUPPORTED){
+    folderBar.innerHTML = `<span>Your browser can't create folders on disk automatically (Chrome/Edge can) — you'll get CSV + PDF downloads instead.</span>`;
+    return;
+  }
+  if(rootDirHandle){
+    folderBar.innerHTML = `Saving idea folders into <span class="folder-name">${escapeHtml(rootDirHandle.name)}</span> &nbsp;`;
+    const btn = document.createElement('button');
+    btn.textContent = 'Change folder';
+    btn.onclick = pickRootFolder;
+    folderBar.appendChild(btn);
+  } else if(window.__pendingFolderHandle){
+    folderBar.innerHTML = `<span>Remembered folder <span class="folder-name">${escapeHtml(window.__pendingFolderHandle.name)}</span> — click to reconnect (browsers require a click each session).</span> &nbsp;`;
+    const btn = document.createElement('button');
+    btn.textContent = 'Reconnect folder';
+    btn.onclick = reconnectRootFolder;
+    folderBar.appendChild(btn);
+    const btn2 = document.createElement('button');
+    btn2.textContent = 'Choose different folder';
+    btn2.style.marginLeft = '6px';
+    btn2.onclick = pickRootFolder;
+    folderBar.appendChild(btn2);
+  } else {
+    folderBar.innerHTML = `<span>Choose a base folder once — each idea gets its own subfolder with attached PDFs and a sources.csv. It'll be remembered next time you open this file.</span> &nbsp;`;
+    const btn = document.createElement('button');
+    btn.textContent = 'Choose base folder';
+    btn.onclick = pickRootFolder;
+    folderBar.appendChild(btn);
+  }
+}
+async function pickRootFolder(){
+  try{
+    rootDirHandle = await window.showDirectoryPicker();
+    window.__pendingFolderHandle = null;
+    await idbSetHandle(rootDirHandle);
+    renderFolderBar();
+  }catch(e){ /* user cancelled the picker — not an error */ }
+}
+renderFolderBar();
+restoreRootFolder();
+
+/* ================= PDF selection + metadata extraction ================= */
+pickPdfBtn.addEventListener('click', () => pdfInput.click());
+pdfInput.addEventListener('change', async () => {
+  await handleIncomingPdfFiles(Array.from(pdfInput.files || []));
+  pdfInput.value = '';
+});
+
+async function handleIncomingPdfFiles(files){
+  files = files.filter(f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+  if(files.length === 0) return;
+  extractingMsg.textContent = `Reading ${files.length} PDF${files.length>1?'s':''}...`;
+  for(const file of files){
+    if(file.size > 20*1024*1024){
+      pendingFiles.push({file, title: file.name.replace(/\.pdf$/i,''), authors:'', doi:'', tooLarge:true});
+      continue;
+    }
+    try{
+      const meta = await extractPdfMeta(file);
+      pendingFiles.push({file, ...meta});
+    }catch(e){
+      showError(`Couldn't read "${file.name}" (it may be corrupted or password-protected) — added with filename only.`);
+      pendingFiles.push({file, title: file.name.replace(/\.pdf$/i,''), authors:'', doi:''});
+    }
+  }
+  extractingMsg.textContent = '';
+  renderPdfTable();
+}
+
+/* Drag-and-drop entry point — routes into the same extraction pipeline as the file picker.
+   Single set of listeners; dragover/dragenter toggle the highlight, drop clears it and handles files. */
+['dragenter','dragover'].forEach(evt => {
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault(); e.stopPropagation();
+    dropzone.classList.add('dragover');
+  });
+});
+dropzone.addEventListener('dragleave', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  dropzone.classList.remove('dragover');
+});
+dropzone.addEventListener('drop', async (e) => {
+  e.preventDefault(); e.stopPropagation();
+  dropzone.classList.remove('dragover');
+  const files = Array.from(e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : []);
+  await handleIncomingPdfFiles(files);
+});
+
+async function extractPdfMeta(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  let title = '', authors = '';
+  try{
+    const md = await pdf.getMetadata();
+    if(md && md.info){
+      title = md.info.Title || '';
+      authors = md.info.Author || '';
+    }
+  }catch(e){ /* metadata dict missing/unreadable — fall through to text-based guess below */ }
+
+  const page = await pdf.getPage(1);
+  const content = await page.getTextContent();
+  const text = content.items.map(i => i.str).join(' ');
+
+  const doiMatch = text.match(/10\.\d{4,9}\/[^\s"'<>]+/i);
+  const doi = doiMatch ? doiMatch[0].replace(/[.,;)]+$/,'') : '';
+
+  if(!title){
+    const guess = text.split(/\babstract\b/i)[0].trim();
+    title = guess.slice(0, 140);
+  }
+  return { title: title.trim(), authors: authors.trim(), doi };
+}
+
+function renderPdfTable(){
+  if(pendingFiles.length === 0){
+    pdfTableWrap.style.display = 'none';
+    pdfTableBody.innerHTML = '';
+    return;
+  }
+  pdfTableWrap.style.display = 'block';
+  pdfTableBody.innerHTML = pendingFiles.map((pf, idx) => `
+    <tr>
+      <td><input type="text" data-idx="${idx}" data-field="title" value="${escapeAttr(pf.title)}"></td>
+      <td><input type="text" data-idx="${idx}" data-field="authors" value="${escapeAttr(pf.authors)}"></td>
+      <td><input type="text" data-idx="${idx}" data-field="doi" value="${escapeAttr(pf.doi)}"></td>
+      <td style="font-size:11px;color:var(--ink-soft);">${escapeHtml(pf.file.name)}${pf.tooLarge?' (too large to parse)':''}</td>
+      <td><button class="rm-row" data-rm="${idx}">remove</button></td>
+    </tr>
+  `).join('');
+
+  pdfTableBody.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const idx = parseInt(inp.dataset.idx, 10);
+      pendingFiles[idx][inp.dataset.field] = inp.value;
+    });
+  });
+  pdfTableBody.querySelectorAll('[data-rm]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pendingFiles.splice(parseInt(btn.dataset.rm,10), 1);
+      renderPdfTable();
+    });
+  });
+}
+
+/* ================= storage ================= */
+function loadIdeas(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    ideas = raw ? JSON.parse(raw) : [];
+    // Migration: only ever backfill testedAt for ideas that are genuinely Tested,
+    // never touch New/In Progress records, and never re-run against already-correct data.
+    let migrated = false;
+    ideas.forEach(i => {
+      if(i.testedAt === undefined || i.testedAt === null){
+        if(i.status === 'Tested'){ i.testedAt = i.createdAt || todayStr(); migrated = true; }
+        else if(i.status !== undefined){ i.testedAt = null; } // normalize key presence, still null
+      }
+    });
+    if(migrated) saveIdeas();
+    storageHint.textContent = 'Saved automatically on this device.';
+  }catch(e){
+    ideas = [];
+    storageHint.textContent = "Warning: local storage unavailable or corrupted — ideas won't be saved.";
+    storageHint.style.color = 'var(--overdue)';
+  }
+  render();
+}
+function saveIdeas(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas)); }
+  catch(e){
+    storageHint.textContent = 'Warning: could not save (storage full or blocked).';
+    storageHint.style.color = 'var(--overdue)';
+  }
+}
+function uid(){ return 'idea_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+/* ================= folder name + csv helpers ================= */
+function sanitizeFolderName(str){
+  return (str || 'untitled-idea')
+    .trim().slice(0,60)
+    .replace(/[\\/:*?"<>|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim() || 'untitled-idea';
+}
+function toCsvValue(v){
+  const s = (v || '').toString().replace(/"/g,'""');
+  return `"${s}"`;
+}
+function buildCsv(sources){
+  const header = ['Title','Authors','DOI','Filename'];
+  const lines = [header.map(toCsvValue).join(',')];
+  sources.forEach(s => {
+    lines.push([s.title, s.authors, s.doi, s.filename].map(toCsvValue).join(','));
+  });
+  return lines.join('\r\n');
+}
+function buildAllIdeasCsv(){
+  const header = ['Idea','Status','Next Action','Created','Due Date','Folder','Source Count'];
+  const lines = [header.map(toCsvValue).join(',')];
+  ideas.forEach(idea => {
+    lines.push([
+      idea.text, idea.status, idea.actionType, idea.createdAt,
+      idea.dueDate || '', idea.folderName || '', String(idea.sources.length)
+    ].map(toCsvValue).join(','));
+  });
+  return lines.join('\r\n');
+}
+function downloadBlob(content, filename, type){
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* Saves attached PDFs + a sources.csv either to the chosen folder (File System Access API)
+   or, if that's unavailable/fails, as real downloads — the CSV *and* every PDF file, so
+   nothing is silently lost regardless of which path is taken. */
+async function saveSourcesToDisk(ideaFolderName, sources, files){
+  if(FS_SUPPORTED && rootDirHandle){
+    try{
+      const ideaDir = await rootDirHandle.getDirectoryHandle(ideaFolderName, {create:true});
+      for(let i=0;i<files.length;i++){
+        const f = files[i];
+        if(!f) continue;
+        const fh = await ideaDir.getFileHandle(f.name, {create:true});
+        const w = await fh.createWritable();
+        await w.write(f);
+        await w.close();
+      }
+      const csv = buildCsv(sources);
+      const csvHandle = await ideaDir.getFileHandle('sources.csv', {create:true});
+      const cw = await csvHandle.createWritable();
+      await cw.write(csv);
+      await cw.close();
+      return {mode:'disk', folder: ideaFolderName};
+    }catch(e){
+      showError(`Couldn't save to "${ideaFolderName}" on disk (permission may have been revoked) — falling back to downloads.`);
+      // fall through to download fallback below
+    }
+  }
+  // Fallback: download the CSV and every attached PDF individually, so nothing is lost
+  // just because folder-writing wasn't available or failed.
+  if(sources.length > 0){
+    downloadBlob(buildCsv(sources), `${ideaFolderName}-sources.csv`, 'text/csv');
+  }
+  files.forEach(f => {
+    if(!f) return;
+    const url = URL.createObjectURL(f);
+    const a = document.createElement('a');
+    a.href = url; a.download = f.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+  return {mode:'download'};
+}
+
+/* ================= add idea ================= */
+addBtn.addEventListener('click', async () => {
+  const text = ideaTextEl.value.trim();
+  if(!text){
+    ideaTextEl.style.borderColor = 'var(--overdue)';
+    ideaTextEl.focus();
+    return;
+  }
+  clearError();
+  addBtn.disabled = true;
+  addBtn.textContent = 'Saving...';
+
+  const folderName = sanitizeFolderName(text.split(/[.!?\n]/)[0] || text);
+  const sources = pendingFiles.map(pf => ({
+    title: pf.title, authors: pf.authors, doi: pf.doi, filename: pf.file.name
+  }));
+  const files = pendingFiles.map(pf => pf.file);
+
+  let saveResult = {mode:'none'};
+  if(sources.length > 0){
+    saveResult = await saveSourcesToDisk(folderName, sources, files);
+  }
+
+  const idea = {
+    id: uid(),
+    text,
+    actionType: actionTypeEl.value,
+    dueDate: dueDateEl.value || '',
+    status: 'New',
+    createdAt: todayStr(),
+    testedAt: null,
+    folderName: sources.length > 0 ? folderName : '',
+    saveMode: saveResult.mode,
+    sources,
+    linkedTo: linkedIdeaId
+  };
+  ideas.unshift(idea);
+  saveIdeas();
+
+  resetCaptureForm();
+
+  addBtn.disabled = false;
+  addBtn.textContent = 'Add idea';
+  render();
+});
+
+function resetCaptureForm(){
+  ideaTextEl.value = '';
+  ideaTextEl.style.borderColor = 'var(--rule)';
+  dueDateEl.value = '';
+  actionTypeEl.selectedIndex = 0;
+  dateChips.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
+  pendingFiles = [];
+  renderPdfTable();
+  resetDupeState();
+  clearDraft();
+}
+function resetDupeState(){
+  dismissedDupeIds = new Set();
+  linkedIdeaId = null;
+  dupeNote.classList.remove('show');
+  dupeNote.innerHTML = '';
+}
+
+/* Clear stale duplicate-detection state whenever the draft is emptied out (not just on save) —
+   otherwise a dismissal from an abandoned draft could suppress a real match on the next one. */
+ideaTextEl.addEventListener('input', () => {
+  if(!ideaTextEl.value.trim()) resetDupeState();
+  autoSaveDraft(ideaTextEl.value);
+});
+
+/* ================= filters / search / export ================= */
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    activeFilter = chip.dataset.filter;
+    render();
+  });
+});
+searchBox.addEventListener('input', render);
+
+exportAllBtn.addEventListener('click', () => {
+  if(ideas.length === 0){ alert('No ideas to export yet.'); return; }
+  downloadBlob(buildAllIdeasCsv(), `idea-tracker-export-${todayStr()}.csv`, 'text/csv');
+});
+
+function isOverdue(idea){ return idea.dueDate && idea.dueDate < todayStr() && idea.status !== 'Tested'; }
+
+/* ================= analytics ================= */
+function renderAnalytics(){
+  if(ideas.length === 0){ analyticsPanel.innerHTML = ''; return; }
+
+  const total = ideas.length;
+  const byStatus = {New:0, 'In Progress':0, Tested:0};
+  ideas.forEach(i => { byStatus[i.status] = (byStatus[i.status]||0) + 1; });
+
+  const overdueCount = ideas.filter(isOverdue).length;
+
+  const testedDurations = ideas
+    .filter(i => i.status === 'Tested' && i.createdAt && i.testedAt)
+    .map(i => {
+      const created = new Date(i.createdAt + 'T00:00:00');
+      const ended = new Date(i.testedAt + 'T00:00:00');
+      return Math.max(0, Math.round((ended - created) / 86400000));
+    });
+  const avgDays = testedDurations.length
+    ? Math.round(testedDurations.reduce((a,b)=>a+b,0) / testedDurations.length)
+    : null;
+
+  const byAction = {};
+  ideas.forEach(i => { byAction[i.actionType] = (byAction[i.actionType]||0) + 1; });
+  const topAction = Object.entries(byAction).sort((a,b)=>b[1]-a[1])[0];
+
+  analyticsPanel.innerHTML = `
+    <div class="stat"><span class="num">${total}</span><span class="lbl">Total ideas</span></div>
+    <div class="stat"><span class="num">${byStatus['New']}</span><span class="lbl">New</span></div>
+    <div class="stat"><span class="num">${byStatus['In Progress']}</span><span class="lbl">In progress</span></div>
+    <div class="stat"><span class="num">${byStatus['Tested']}</span><span class="lbl">Tested</span></div>
+    <div class="stat"><span class="num ${overdueCount>0?'warn':''}">${overdueCount}</span><span class="lbl">Overdue now</span></div>
+    <div class="stat"><span class="num">${avgDays !== null ? avgDays+'d' : '—'}</span><span class="lbl">Avg. new → tested</span></div>
+    <div class="stat"><span class="num" style="font-size:14px;">${topAction ? escapeHtml(topAction[0]) : '—'}</span><span class="lbl">Top next-action</span></div>
+  `;
+}
+
+/* ================= status / delete ================= */
+function cycleStatus(id, newStatus){
+  const idea = ideas.find(i => i.id === id);
+  if(!idea) return;
+  idea.status = newStatus;
+  if(newStatus === 'Tested' && !idea.testedAt) idea.testedAt = todayStr();
+  if(newStatus !== 'Tested') idea.testedAt = null;
+  saveIdeas();
+  render();
+}
+function deleteIdea(id){
+  if(!confirm('Delete this idea? (Any saved folder/PDFs on disk will remain untouched.)')) return;
+  ideas = ideas.filter(i => i.id !== id);
+  saveIdeas();
+  render();
+}
+
+/* ================= render ================= */
+function render(){
+  renderAnalytics();
+  const q = searchBox.value.trim().toLowerCase();
+  let filtered = ideas.filter(idea => {
+    if(q && !(idea.text.toLowerCase().includes(q) ||
+        idea.sources.some(s => (s.title+s.authors+s.doi).toLowerCase().includes(q)))) return false;
+    if(activeFilter === 'all') return true;
+    if(activeFilter === 'overdue') return isOverdue(idea);
+    return idea.status === activeFilter;
+  });
+
+  if(ideas.length === 0){
+    listArea.innerHTML = '<div class="empty">Your notebook is empty. Capture the first idea above before it slips away.</div>';
+    return;
+  }
+  if(filtered.length === 0){
+    listArea.innerHTML = '<div class="empty">Nothing matches this view.</div>';
+    return;
+  }
+
+  filtered.sort((a,b) => {
+    const aOver = isOverdue(a), bOver = isOverdue(b);
+    if(aOver !== bOver) return aOver ? -1 : 1;
+    if(a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    if(a.dueDate) return -1;
+    if(b.dueDate) return 1;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+
+  listArea.innerHTML = filtered.map(idea => {
+    const overdue = isOverdue(idea);
+    const done = idea.status === 'Tested';
+    const linked = idea.linkedTo ? ideas.find(i => i.id === idea.linkedTo) : null;
+    const sourcesHtml = idea.sources.length ? `
+      <div class="sources-list">
+        ${idea.sources.map(s => `<div><b>${escapeHtml(s.title||s.filename)}</b>${s.authors?' — '+escapeHtml(s.authors):''}${s.doi?' — DOI: '+escapeHtml(s.doi):''}</div>`).join('')}
+      </div>` : '';
+    return `
+      <div class="card ${overdue ? 'overdue':''} ${done ? 'tested':''}">
+        <div class="card-top">
+          <div class="idea-text ${done?'done':''}">${escapeHtml(idea.text)}</div>
+          <div class="row-btns">
+            <select class="status-select" data-id="${idea.id}">
+              ${['New','In Progress','Tested'].map(s => `<option value="${s}" ${idea.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <button class="icon-btn" data-delete="${idea.id}">delete</button>
+          </div>
+        </div>
+        <div class="meta">
+          <span class="tag action">${escapeHtml(idea.actionType)}</span>
+          ${idea.dueDate ? `<span class="tag due ${overdue?'overdue':''}">${overdue?'overdue: ':'due '}${fmtDate(idea.dueDate)}</span>` : ''}
+          ${idea.folderName ? `<span class="tag folder">📁 ${escapeHtml(idea.folderName)}${idea.saveMode==='download' ? ' (downloaded)':''}</span>` : ''}
+          ${linked ? `<span class="tag linked">🔗 linked to "${escapeHtml(linked.text.slice(0,40))}${linked.text.length>40?'…':''}"</span>` : ''}
+          ${idea.dueDate ? `
+            <button class="cal-btn" data-ics="${idea.id}">📅 .ics</button>
+            <a class="cal-btn" href="${buildGoogleCalUrl(idea)}" target="_blank" rel="noopener">📅 Google Cal</a>
+          ` : ''}
+        </div>
+        ${sourcesHtml}
+      </div>
+    `;
+  }).join('');
+
+  listArea.querySelectorAll('.status-select').forEach(sel => {
+    sel.addEventListener('change', () => cycleStatus(sel.dataset.id, sel.value));
+  });
+  listArea.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteIdea(btn.dataset.delete));
+  });
+  listArea.querySelectorAll('[data-ics]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idea = ideas.find(i => i.id === btn.dataset.ics);
+      if(idea) downloadIcs(idea);
+    });
+  });
+}
+
+/* ================= calendar reminders: .ics file + Google Calendar link ================
+   No auth, no server — nothing leaves the machine unless the person clicks the Google Cal link. */
+function icsDateStamp(dateStr){ return dateStr.replace(/-/g,''); } // YYYYMMDD, all-day event
+
+function buildIcsContent(idea){
+  const dt = icsDateStamp(idea.dueDate);
+  const dtEnd = icsDateStamp(addDaysLocal(idea.dueDate, 1));
+  const uid = idea.id + '@idea-tracker.local';
+  const summary = (idea.text.slice(0,80) + (idea.text.length>80?'…':'')).replace(/\r?\n/g,' ');
+  const desc = idea.text.replace(/\r?\n/g,'\\n');
+  return [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Idea Tracker//EN','BEGIN:VEVENT',
+    `UID:${uid}`,`DTSTAMP:${icsDateStamp(todayStr())}T000000Z`,
+    `DTSTART;VALUE=DATE:${dt}`,`DTEND;VALUE=DATE:${dtEnd}`,
+    `SUMMARY:Idea follow-up: ${summary}`,`DESCRIPTION:${desc} — Next action: ${idea.actionType}`,
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+}
+function downloadIcs(idea){
+  downloadBlob(buildIcsContent(idea), `idea-reminder-${idea.dueDate}.ics`, 'text/calendar');
+}
+function buildGoogleCalUrl(idea){
+  const start = icsDateStamp(idea.dueDate);
+  const end = icsDateStamp(addDaysLocal(idea.dueDate, 1));
+  const text = encodeURIComponent('Idea follow-up: ' + idea.text.slice(0,80));
+  const details = encodeURIComponent(idea.text + ' — Next action: ' + idea.actionType);
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}`;
+}
+
+/* ================= escaping ================= */
+function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+function escapeAttr(str){ return escapeHtml(str).replace(/"/g,'&quot;'); }
+
+/* ================= lightweight TF-IDF duplicate / related-idea detection ==============
+   Entirely client-side, zero extra dependencies. Compares the in-progress draft against all
+   stored ideas' text and flags anything above a similarity threshold before the user saves. */
+const DUPLICATE_THRESHOLD = 0.32;
+const STOPWORDS = new Set(['the','a','an','and','or','but','of','to','in','on','for','with','is','are',
+  'was','were','be','been','it','this','that','as','at','by','from','i','we','you','they','have','has',
+  'had','can','could','should','would','will','not','do','does','did','if','then','than','so','my','our',
+  'their','its','into','also','which','what','when','how']);
+
+function tokenize(text){
+  return (text || '').toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !STOPWORDS.has(w));
+}
+function termFreq(tokens){
+  const tf = {};
+  tokens.forEach(t => { tf[t] = (tf[t]||0) + 1; });
+  return tf;
+}
+function computeIdf(allTokenLists){
+  const df = {};
+  allTokenLists.forEach(tokens => {
+    new Set(tokens).forEach(t => { df[t] = (df[t]||0) + 1; });
+  });
+  const N = allTokenLists.length;
+  const idf = {};
+  Object.keys(df).forEach(t => { idf[t] = Math.log((N + 1) / (df[t] + 1)) + 1; });
+  return idf;
+}
+function tfidfVector(tf, idf){
+  const vec = {};
+  Object.keys(tf).forEach(t => { vec[t] = tf[t] * (idf[t] || 0); });
+  return vec;
+}
+function cosineSim(vecA, vecB){
+  let dot = 0, magA = 0, magB = 0;
+  Object.keys(vecA).forEach(k => { dot += (vecA[k]||0) * (vecB[k]||0); magA += vecA[k]*vecA[k]; });
+  Object.keys(vecB).forEach(k => { magB += vecB[k]*vecB[k]; });
+  if(magA === 0 || magB === 0) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
+function findSimilarIdeas(draftText){
+  if(ideas.length === 0) return [];
+  const draftTokens = tokenize(draftText);
+  if(draftTokens.length === 0) return [];
+
+  const allTokenLists = ideas.map(i => tokenize(i.text)).concat([draftTokens]);
+  const idf = computeIdf(allTokenLists);
+  const draftVec = tfidfVector(termFreq(draftTokens), idf);
+
+  return ideas
+    .map(idea => {
+      const vec = tfidfVector(termFreq(tokenize(idea.text)), idf);
+      return { idea, score: cosineSim(draftVec, vec) };
+    })
+    .filter(r => r.score >= DUPLICATE_THRESHOLD && !dismissedDupeIds.has(r.idea.id))
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+let dupeCheckTimer = null;
+ideaTextEl.addEventListener('input', () => {
+  clearTimeout(dupeCheckTimer);
+  dupeCheckTimer = setTimeout(checkForDuplicates, 400);
+});
+
+function checkForDuplicates(){
+  const text = ideaTextEl.value.trim();
+  if(!text){ dupeNote.classList.remove('show'); dupeNote.innerHTML=''; return; }
+  const matches = findSimilarIdeas(text);
+  if(matches.length === 0){ dupeNote.classList.remove('show'); dupeNote.innerHTML=''; return; }
+
+  dupeNote.classList.add('show');
+  dupeNote.innerHTML = `<div class="dupe-head">This looks similar to ${matches.length>1?'these ideas':'an idea'} you already have:</div>` +
+    matches.map(m => `
+      <div class="dupe-item">
+        <div class="dupe-text">"${escapeHtml(m.idea.text.slice(0,90))}${m.idea.text.length>90?'…':''}" — ${fmtDate(m.idea.createdAt)}, ${escapeHtml(m.idea.status)}</div>
+        <div class="dupe-actions">
+          <button data-link="${m.idea.id}">Link, same idea</button>
+          <button data-dismiss="${m.idea.id}">Not related</button>
+        </div>
+      </div>
+    `).join('');
+
+  dupeNote.querySelectorAll('[data-dismiss]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dismissedDupeIds.add(btn.dataset.dismiss);
+      checkForDuplicates();
+    });
+  });
+  dupeNote.querySelectorAll('[data-link]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      linkedIdeaId = btn.dataset.link;
+      const target = ideas.find(i => i.id === linkedIdeaId);
+      dupeNote.innerHTML = `<div class="dupe-head">Will link to: "${escapeHtml(target ? target.text.slice(0,80) : '')}" once saved.</div>`;
+    });
+  });
+}
+
+/* ================= boot ================= */
+loadIdeas();
+restoreDraft();
+if(ideaTextEl.value.trim()) checkForDuplicates();
+</script>
+</body>
+</html>
