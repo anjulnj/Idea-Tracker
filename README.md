@@ -18,6 +18,11 @@ It's a single HTML file — no install, no build step.
 
 - **Try it live:** [your GitHub Pages link]
 - **Or download `idea-tracker.html`** from this repo and open it in Chrome or Edge (needed for the local-folder saving feature; other browsers work too, just fall back to downloads instead of folders)
+- The first time you open it, click **"Choose base folder"** and pick the folder you keep the file in — that way every idea's PDF and notes land right next to it, instead of your Downloads folder. It's remembered after that.
+
+## Backup / restoring your data
+
+Everything is saved in the browser's local storage by default, plus a full backup file (`idea-tracker-backup.json`) written into your chosen folder every time you add or update an idea. If you ever lose your browser data, switch machines, or re-download the file, just reconnect to the same folder and click **"Restore ideas from this folder"** — it reads that file and brings everything back.
 
 ## Notes
 
@@ -25,4 +30,3 @@ It's a single HTML file — no install, no build step.
 - Everything stays local. There's no backend, no tracking, no account.
 
 Made for my own workflow, sharing in case it's useful to anyone else.
-
