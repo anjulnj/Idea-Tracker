@@ -559,6 +559,11 @@ function renderFolderBar(){
     btn.textContent = 'Change folder';
     btn.onclick = pickRootFolder;
     folderBar.appendChild(btn);
+    const restoreBtn = document.createElement('button');
+    restoreBtn.textContent = 'Restore ideas from this folder';
+    restoreBtn.style.marginLeft = '6px';
+    restoreBtn.onclick = restoreIdeasFromFolder;
+    folderBar.appendChild(restoreBtn);
   } else if(window.__pendingFolderHandle){
     folderBar.innerHTML = `<span>Remembered folder <span class="folder-name">${escapeHtml(window.__pendingFolderHandle.name)}</span> — click to reconnect (browsers require a click each session).</span> &nbsp;`;
     const btn = document.createElement('button');
@@ -571,6 +576,7 @@ function renderFolderBar(){
     btn2.onclick = pickRootFolder;
     folderBar.appendChild(btn2);
   } else {
+    /* fallthrough to the default "choose a base folder" prompt below */
     folderBar.innerHTML = `<span>Choose a base folder once — each idea gets its own subfolder with attached PDFs and a sources.csv. It'll be remembered next time you open this file.</span> &nbsp;`;
     const btn = document.createElement('button');
     btn.textContent = 'Choose base folder';
@@ -721,6 +727,61 @@ function saveIdeas(){
   catch(e){
     storageHint.textContent = 'Warning: could not save (storage full or blocked).';
     storageHint.style.color = 'var(--overdue)';
+  }
+  backupIdeasToDisk(); // best-effort — no-op if no folder is connected
+}
+
+/* Writes the full idea list (text, status, dates, sources — everything) as a single JSON file
+   at the root of the connected folder. This makes the folder itself the real backup, not just
+   the sources.csv files, so reconnecting to it later can fully restore your data even if
+   localStorage is cleared, the browser profile is lost, or the file is re-downloaded fresh. */
+async function backupIdeasToDisk(){
+  if(!FS_SUPPORTED || !rootDirHandle) return;
+  try{
+    const fh = await rootDirHandle.getFileHandle('idea-tracker-backup.json', {create:true});
+    const w = await fh.createWritable();
+    await w.write(JSON.stringify({ savedAt: todayStr(), ideas }, null, 2));
+    await w.close();
+  }catch(e){
+    // Non-fatal — localStorage still has the data. Don't spam the user on every keystroke-triggered
+    // save; just note it quietly so a persistent problem is still discoverable.
+    console.warn('Could not write backup file:', e);
+  }
+}
+
+/* Reads idea-tracker-backup.json from the connected folder and restores the full idea list from
+   it — used after reconnecting to a folder when localStorage is empty or was lost (new browser,
+   re-downloaded file, cleared site data, etc). Merges by id so it won't duplicate anything already
+   present, and only adds ideas that aren't already in the current list. */
+async function restoreIdeasFromFolder(){
+  if(!FS_SUPPORTED || !rootDirHandle) return;
+  clearError();
+  try{
+    const fh = await rootDirHandle.getFileHandle('idea-tracker-backup.json', {create:false});
+    const file = await fh.getFile();
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const restored = Array.isArray(data.ideas) ? data.ideas : [];
+    if(restored.length === 0){
+      alert('No ideas found in idea-tracker-backup.json in that folder.');
+      return;
+    }
+    const existingIds = new Set(ideas.map(i => i.id));
+    const toAdd = restored.filter(i => i && i.id && !existingIds.has(i.id));
+    if(toAdd.length === 0){
+      alert('Everything in the backup file is already in your current list — nothing new to restore.');
+      return;
+    }
+    ideas = ideas.concat(toAdd);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas));
+    render();
+    alert(`Restored ${toAdd.length} idea${toAdd.length>1?'s':''} from the folder.`);
+  }catch(e){
+    if(e && e.name === 'NotFoundError'){
+      alert("This folder doesn't have an idea-tracker-backup.json yet — it's created automatically the next time you add or update an idea while connected to a folder.");
+    } else {
+      showError('Could not read the backup file from this folder: ' + e.message);
+    }
   }
 }
 function uid(){ return 'idea_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
